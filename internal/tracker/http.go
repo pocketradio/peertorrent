@@ -16,9 +16,13 @@ func SendTrackerRequest(
 	uploaded uint64,
 	downloaded uint64,
 	left uint64,
+	peerID string,
 ) (TrackerResponse, error) {
+	if len(peerID) != 20 {
+		return TrackerResponse{}, fmt.Errorf("peer id must be exactly 20 bytes")
+	}
 
-	peerID := GeneratePeerID()
+	// peerID := GeneratePeerID()
 
 	u, err := url.Parse(announceURL)
 	if err != nil {
