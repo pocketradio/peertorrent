@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 	"os"
+	"peertorrent/internal/peers"
 	"peertorrent/internal/torrent"
+	"peertorrent/internal/tracker"
 )
 
 func main() {
@@ -17,8 +19,26 @@ func main() {
 		log.Fatalf("failed to read torrent file: %v", err)
 	}
 
-	_, err = torrent.FileParser(file)
+	f, err := torrent.FileParser(file)
 	if err != nil {
 		log.Fatalf("failed to parse torrent file: %v", err)
 	}
+
+	peerID := tracker.GeneratePeerID()
+	trackerResponse, err := tracker.SendTrackerRequest(
+		f.Announce,
+		f.InfoHash,
+		6881,
+		0,
+		0,
+		f.Info.Length,
+		peerID,
+	)
+
+	if err != nil {
+		log.Fatalf("failed to announce to tracker: %v", err)
+	}
+
+	peers.TCPHandshake(f, trackerResponse, peerID)
+
 }
