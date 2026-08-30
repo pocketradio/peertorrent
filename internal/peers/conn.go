@@ -22,7 +22,10 @@ func TCPHandshake(tf torrent.TorrentFile, tr tracker.TrackerResponse, clientPeer
 
 	defer conn.Close()
 
+	pState := PeerState{}
 	err = PerformHandshake(tf, clientPeerID, tr.Peers[0].ID, conn)
+
+	err = ReadMessage(conn, &pState)
 	return err
 }
 
