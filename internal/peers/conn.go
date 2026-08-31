@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"peertorrent/internal/piece"
 	"peertorrent/internal/torrent"
 	"peertorrent/internal/tracker"
 	"slices"
@@ -23,9 +24,11 @@ func TCPHandshake(tf torrent.TorrentFile, tr tracker.TrackerResponse, clientPeer
 	defer conn.Close()
 
 	pState := PeerState{}
+	ClientManager := piece.ClientManager{}
 	err = PerformHandshake(tf, clientPeerID, tr.Peers[0].ID, conn)
 
-	err = ReadMessage(conn, &pState)
+	err = ReadMessage(conn, &pState, &ClientManager)
+	
 	return err
 }
 
