@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
+	"peertorrent/internal/piece"
 )
 
 type Message struct {
@@ -14,7 +15,7 @@ type Message struct {
 	Payload []byte
 }
 
-func ReadMessage(conn net.Conn, pState *PeerState) error {
+func ReadMessage(conn net.Conn, pState *PeerState, clientManager *piece.ClientManager) error {
 
 	lengthBuffer := make([]byte, 4)
 
@@ -38,12 +39,12 @@ func ReadMessage(conn net.Conn, pState *PeerState) error {
 
 	ID := payloadAndIDBuffer[0]
 	payload := payloadAndIDBuffer[1:]
-	HandleMessage(conn, ID, payload, pState)
+	HandleMessage(conn, ID, payload, pState, clientManager)
 
 	return nil
 }
 
-func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState) {
+func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState, clientManager *piece.ClientManager) {
 
 	switch ID {
 	case 0: // choke
@@ -71,6 +72,10 @@ func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState) {
 		pState.Have[pieceIndex] = true
 
 	case 5:
+		if pState.Have == nil {
+			pState.Have = make(map[uint32]bool)
+		}
+
 		for byteIndex, byteValue := range payload {
 			for bit := 0; bit < 8; bit++ {
 				bitValue := (byteValue >> (7 - bit)) & 1
@@ -82,6 +87,8 @@ func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState) {
 				// absence of key means peer doesnt have the piece
 			}
 		}
+
+		CheckInterest(conn, pState, clientManager)
 	}
 
 }
