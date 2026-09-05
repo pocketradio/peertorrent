@@ -2,6 +2,7 @@ package peers
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 	"peertorrent/internal/piece"
@@ -28,6 +29,9 @@ func ReadMessage(conn net.Conn, pState *PeerState, clientManager *piece.ClientMa
 
 	if msgLength == 0 { // keepalive ; no ID or payload
 		return nil // tcp conn does not close
+	}
+	if msgLength < 1 {
+		return fmt.Errorf("peer message has no message id")
 	}
 
 	payloadAndIDBuffer := make([]byte, msgLength) // payload = length - 1 (+ 1byte for the ID)
@@ -89,6 +93,11 @@ func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState, cl
 		}
 
 		CheckInterest(conn, pState, clientManager)
+
+	case 6: // request
+		if len(payload) != 12 {
+			return
+		}
 	}
 
 }
