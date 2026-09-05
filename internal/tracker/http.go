@@ -18,9 +18,6 @@ func SendTrackerRequest(
 	left uint64,
 	peerID string,
 ) (TrackerResponse, error) {
-	if len(peerID) != 20 {
-		return TrackerResponse{}, fmt.Errorf("peer id must be exactly 20 bytes")
-	}
 
 	// peerID := GeneratePeerID()
 
@@ -36,6 +33,7 @@ func SendTrackerRequest(
 	q.Set("uploaded", strconv.FormatUint(uploaded, 10))
 	q.Set("downloaded", strconv.FormatUint(downloaded, 10))
 	q.Set("left", strconv.FormatUint(left, 10))
+	q.Set("event", "started")
 
 	u.RawQuery = q.Encode() // rawquery is "" since no query params in the announceURL
 
