@@ -23,12 +23,17 @@ func TCPHandshake(tf torrent.TorrentFile, tr tracker.TrackerResponse, clientPeer
 
 	defer conn.Close()
 
-	pState := PeerState{}
+	pState := PeerState{
+		Choked: true,
+	}
+
 	ClientManager := piece.ClientManager{}
 	err = PerformHandshake(tf, clientPeerID, tr.Peers[0].ID, conn)
 
-	err = ReadMessage(conn, &pState, &ClientManager)
-	
+	for pState.Choked {
+		err = ReadMessage(conn, &pState, &ClientManager)
+	}
+
 	return err
 }
 
@@ -41,20 +46,21 @@ func PerformHandshake(tf torrent.TorrentFile, clientPeerID string, peerID string
 	handshake = append(handshake, tf.InfoHash[:]...)
 	handshake = append(handshake, []byte(clientPeerID)...)
 
-	n, err := conn.Write(handshake) // buffered by OS until read
+	err := writeAll(conn, handshake)
 	if err != nil {
 		return fmt.Errorf("error establishing handshake with peer : %s", err)
-
 	}
 
 	bytesBuffer := make([]byte, 68)
 
-	n, err = io.ReadFull(conn, bytesBuffer)
+	_, err = io.ReadFull(conn, bytesBuffer)
 	if err != nil {
 		return fmt.Errorf("failed to connect to peer : %s", err)
 	}
 
-	fmt.Println("Response : ", string(bytesBuffer[:n]))
+	if bytesBuffer[0] != 19 || string(bytesBuffer[1:20]) != "BitTorrent protocol" {
+		return fmt.Errorf("invalid bittorrent handshake")
+	}
 
 	peer_info_hash := bytesBuffer[28:48]
 	response_peer_ID := string(bytesBuffer[48:68])
@@ -67,5 +73,17 @@ func PerformHandshake(tf torrent.TorrentFile, clientPeerID string, peerID string
 		return fmt.Errorf("peerID did not match.")
 	}
 
+	return nil
+}
+
+// replacing conn.write with this to ensure partial writes complete
+func writeAll(conn net.Conn, data []byte) error {
+	for len(data) > 0 {
+		n, err := conn.Write(data)
+		if err != nil {
+			return err
+		}
+		data = data[n:]
+	}
 	return nil
 }
