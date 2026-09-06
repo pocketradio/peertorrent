@@ -16,7 +16,7 @@ type Message struct {
 	Payload []byte
 }
 
-func ReadMessage(conn net.Conn, pState *PeerState, clientManager *piece.ClientManager) error {
+func ReadMessage(conn net.Conn, pState *PeerState, clientManager *piece.ClientManager, pieceHashes string) error {
 
 	lengthBuffer := make([]byte, 4)
 
@@ -43,20 +43,21 @@ func ReadMessage(conn net.Conn, pState *PeerState, clientManager *piece.ClientMa
 
 	ID := payloadAndIDBuffer[0]
 	payload := payloadAndIDBuffer[1:]
-	HandleMessage(conn, ID, payload, pState, clientManager)
+	HandleMessage(conn, ID, payload, pState, clientManager, pieceHashes)
 
 	return nil
 }
 
-func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState, clientManager *piece.ClientManager) {
+func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState, clientManager *piece.ClientManager, pieceHashes string) {
 
 	switch ID {
 	case 0: // choke
 		pState.Choked = true
 
 	case 1:
-		pState.Choked = false //
-
+		pState.Choked = false
+		clientManager.SelectNeededPiece(pState.Have)
+		RequestNextBlock(conn, pState, clientManager, pieceHashes)
 	case 2:
 		pState.Interested = true // peer is interested
 
@@ -98,6 +99,20 @@ func HandleMessage(conn net.Conn, ID byte, payload []byte, pState *PeerState, cl
 		if len(payload) != 12 {
 			return
 		}
+
+	case 7: // piece
+		if len(payload) < 8 {
+			return
+		}
+		pieceIndex := binary.BigEndian.Uint32(payload[0:4])
+		begin := binary.BigEndian.Uint32(payload[4:8])
+		pieceData := payload[8:]
+		fmt.Printf("received piece %d, block at %d, %d bytes\n", pieceIndex, begin, len(pieceData))
+
+		if verify := piece.VerifyPiece(pieceData, []byte(pieceHashes)); verify {
+
+		}
 	}
 
 }
+d

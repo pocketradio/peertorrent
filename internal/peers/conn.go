@@ -31,7 +31,7 @@ func TCPHandshake(tf torrent.TorrentFile, tr tracker.TrackerResponse, clientPeer
 	err = PerformHandshake(tf, clientPeerID, tr.Peers[0].ID, conn)
 
 	for pState.Choked {
-		err = ReadMessage(conn, &pState, &ClientManager)
+		err = ReadMessage(conn, &pState, &ClientManager, tf.Info.Pieces)
 	}
 
 	return err
